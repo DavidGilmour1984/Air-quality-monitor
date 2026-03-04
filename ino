@@ -3,276 +3,346 @@
 #include <TinyGPSPlus.h>
 #include <Wire.h>
 #include "RTClib.h"
-#include <Preferences.h>
 
-HardwareSerial ZPH(1);
-HardwareSerial GPS(2);
-
+HardwareSerial UART2(2);
 TinyGPSPlus gps;
 RTC_DS3231 rtc;
-Preferences prefs;
 
-#define ZPH_RX 26
-#define ZPH_TX 27
+#define RX_PIN 26
+#define TX_PIN 27
 
-#define GPS_RX 16
-#define GPS_TX 17
+uint8_t frame[9];
+
+float pm25 = 0;
+
+double latitude = 0;
+double longitude = 0;
+double altitude = 0;
+
+String currentTime = "--";
+
+WiFiServer server(80);
 
 const char* ssid = "ESP32 Access Point";
 const char* password = "";
 
-WiFiServer server(80);
+unsigned long lastUpdate = 0;
 
-struct LogRow
-{
-  String gpsTime;
-  String rtcTime;
-  double lat;
-  double lon;
-  float pm;
-  int voc;
-};
-
-LogRow logData[1000];
-int logIndex = 0;
-
-uint8_t frame[9];
-float pmPulse = 0;
-int vocGrade = 0;
-
-double latitude = 0;
-double longitude = 0;
-
-String gpsTime = "--";
-String rtcTime = "--";
-
-void saveToFlash()
-{
-  prefs.putUInt("count", logIndex);
-
-  for(int i=0;i<logIndex;i++)
-  {
-    String key = "row"+String(i);
-
-    String value =
-      logData[i].gpsTime + "," +
-      logData[i].rtcTime + "," +
-      String(logData[i].lat,6) + "," +
-      String(logData[i].lon,6) + "," +
-      String(logData[i].pm) + "," +
-      String(logData[i].voc);
-
-    prefs.putString(key.c_str(), value);
-  }
-}
-
-void loadFromFlash()
-{
-  logIndex = prefs.getUInt("count",0);
-
-  for(int i=0;i<logIndex;i++)
-  {
-    String key="row"+String(i);
-    String row=prefs.getString(key.c_str(),"");
-
-    int p1=row.indexOf(',');
-    int p2=row.indexOf(',',p1+1);
-    int p3=row.indexOf(',',p2+1);
-    int p4=row.indexOf(',',p3+1);
-    int p5=row.indexOf(',',p4+1);
-
-    logData[i].gpsTime=row.substring(0,p1);
-    logData[i].rtcTime=row.substring(p1+1,p2);
-    logData[i].lat=row.substring(p2+1,p3).toDouble();
-    logData[i].lon=row.substring(p3+1,p4).toDouble();
-    logData[i].pm=row.substring(p4+1,p5).toFloat();
-    logData[i].voc=row.substring(p5+1).toInt();
-  }
-}
-
-void readZPH()
-{
-  if (ZPH.available())
-  {
-    if (ZPH.read() == 0xFF)
-    {
-      frame[0] = 0xFF;
-
-      for(int i=1;i<9;i++)
-      {
-        while(!ZPH.available());
-        frame[i] = ZPH.read();
-      }
-
-      pmPulse = frame[3] + frame[4]/100.0;
-      vocGrade = frame[7];
-    }
-  }
-}
-
-void readGPS()
-{
-  while(GPS.available())
-  {
-    gps.encode(GPS.read());
-  }
-
-  if(gps.location.isValid())
-  {
-    latitude = gps.location.lat();
-    longitude = gps.location.lng();
-  }
-
-  if(gps.time.isValid())
-  {
-    gpsTime =
-      String(gps.time.hour()) + ":" +
-      String(gps.time.minute()) + ":" +
-      String(gps.time.second());
-  }
-}
-
-void readRTC()
-{
-  DateTime now = rtc.now();
-
-  rtcTime =
-    String(now.hour()) + ":" +
-    String(now.minute()) + ":" +
-    String(now.second());
-}
-
-void logValues()
-{
-  if(logIndex >= 999) return;
-
-  for(int i=logIndex;i>0;i--)
-  {
-    logData[i]=logData[i-1];
-  }
-
-  logData[0].gpsTime = gpsTime;
-  logData[0].rtcTime = rtcTime;
-  logData[0].lat = latitude;
-  logData[0].lon = longitude;
-  logData[0].pm = pmPulse;
-  logData[0].voc = vocGrade;
-
-  logIndex++;
-
-  saveToFlash();
-}
+String csvData = "Time,Latitude,Longitude,Altitude,PM2.5\n";
 
 void setup()
 {
 Serial.begin(9600);
 
-Wire.begin(21,22);
-rtc.begin();
+UART2.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
-prefs.begin("logger",false);
-loadFromFlash();
+Wire.begin();
 
-ZPH.begin(9600, SERIAL_8N1, ZPH_RX, ZPH_TX);
-GPS.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
+if(!rtc.begin())
+{
+Serial.println("RTC not found");
+}
 
-WiFi.softAP(ssid,password);
+WiFi.softAP(ssid, password);
 server.begin();
+
+Serial.println("Access Point Started");
+Serial.println(WiFi.softAPIP());
 }
 
-void loop()
+void updateRTCfromGPS()
 {
-readZPH();
-readGPS();
-readRTC();
-
-static unsigned long lastLog=0;
-
-if(millis()-lastLog>30000)
+if(gps.time.isValid() && gps.date.isValid())
 {
-  logValues();
-  lastLog=millis();
+int year = gps.date.year();
+
+if(year > 2023 && year < 2035)
+{
+rtc.adjust(DateTime(
+gps.date.year(),
+gps.date.month(),
+gps.date.day(),
+gps.time.hour(),
+gps.time.minute(),
+gps.time.second()
+));
+}
+}
 }
 
+void readZPH()
+{
+if (UART2.available())
+{
+if (UART2.read() == 0xFF)
+{
+frame[0] = 0xFF;
+
+for (int i = 1; i < 9; i++)
+{
+while (!UART2.available());
+frame[i] = UART2.read();
+}
+
+float lowPulseRate = frame[3] + frame[4] / 100.0;
+
+pm25 = lowPulseRate;
+}
+}
+}
+
+void readGPS()
+{
+while (UART2.available())
+{
+char c = UART2.read();
+gps.encode(c);
+}
+
+if(gps.location.isValid())
+{
+latitude = gps.location.lat();
+longitude = gps.location.lng();
+}
+
+if(gps.altitude.isValid())
+{
+altitude = gps.altitude.meters();
+}
+
+updateRTCfromGPS();
+}
+
+void updateTime()
+{
+DateTime now = rtc.now();
+
+char buf[25];
+
+sprintf(buf,"%04d-%02d-%02d %02d:%02d:%02d",
+now.year(),
+now.month(),
+now.day(),
+now.hour(),
+now.minute(),
+now.second());
+
+currentTime = String(buf);
+}
+
+String webpage()
+{
+String page = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+body{
+font-family: Helvetica, Arial, sans-serif;
+background:#f5f7fb;
+padding:30px;
+}
+
+.card{
+background:white;
+padding:30px;
+border-radius:14px;
+box-shadow:0 6px 20px rgba(0,0,0,0.08);
+max-width:1100px;
+margin:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:22px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #ddd;
+text-align:left;
+}
+
+th{
+background:#f0f3f9;
+}
+
+button{
+font-size:24px;
+padding:10px 20px;
+margin:10px;
+background:#2563eb;
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+button:hover{
+background:#1e40af;
+}
+
+</style>
+
+<script>
+
+function update(){
+
+fetch("/data")
+.then(r=>r.json())
+.then(d=>{
+
+let table = document.getElementById("log")
+
+let row = table.insertRow(1)
+
+row.insertCell(0).innerText = d.time
+row.insertCell(1).innerText = d.lat
+row.insertCell(2).innerText = d.lon
+row.insertCell(3).innerText = d.alt
+row.insertCell(4).innerText = d.pm
+
+})
+
+}
+
+function clearData(){
+
+fetch("/clear")
+
+let table=document.getElementById("log")
+
+while(table.rows.length>1){
+table.deleteRow(1)
+}
+
+}
+
+function downloadCSV(){
+window.location="/csv"
+}
+
+setInterval(update,1000)
+
+</script>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Live Sensor Log</h2>
+
+<button onclick="clearData()">Clear Data</button>
+<button onclick="downloadCSV()">Download CSV</button>
+
+<table id="log">
+
+<tr>
+<th>Time</th>
+<th>Latitude</th>
+<th>Longitude</th>
+<th>Altitude</th>
+<th>PM2.5</th>
+</tr>
+
+</table>
+
+</div>
+
+</body>
+</html>
+)rawliteral";
+
+return page;
+}
+
+void handleClient()
+{
 WiFiClient client = server.available();
 
-if(client)
-{
-String req = client.readStringUntil('\r');
+if (!client) return;
 
-if(req.indexOf("/download")>=0)
+String request = client.readStringUntil('\r');
+client.flush();
+
+if(request.indexOf("/data") != -1)
+{
+
+csvData += currentTime + ",";
+csvData += String(latitude,6) + ",";
+csvData += String(longitude,6) + ",";
+csvData += String(altitude,1) + ",";
+csvData += String(pm25,2) + "\n";
+
+String json = "{";
+
+json += "\"time\":\""+currentTime+"\",";
+json += "\"lat\":\""+String(latitude,6)+"\",";
+json += "\"lon\":\""+String(longitude,6)+"\",";
+json += "\"alt\":\""+String(altitude,1)+"\",";
+json += "\"pm\":\""+String(pm25,2)+"\"";
+
+json += "}";
+
+client.println("HTTP/1.1 200 OK");
+client.println("Content-Type: application/json");
+client.println("Connection: close");
+client.println();
+client.println(json);
+
+return;
+}
+
+if(request.indexOf("/clear") != -1)
+{
+csvData = "Time,Latitude,Longitude,Altitude,PM2.5\n";
+
+client.println("HTTP/1.1 200 OK");
+client.println("Content-Type: text/plain");
+client.println("Connection: close");
+client.println();
+client.println("CLEARED");
+
+return;
+}
+
+if(request.indexOf("/csv") != -1)
 {
 client.println("HTTP/1.1 200 OK");
 client.println("Content-Type: text/csv");
 client.println("Content-Disposition: attachment; filename=data.csv");
+client.println("Connection: close");
 client.println();
+client.println(csvData);
 
-client.println("gps_time,rtc_time,latitude,longitude,pm2.5_pulse,voc_grade");
-
-for(int i=0;i<logIndex;i++)
-{
-client.print(logData[i].gpsTime); client.print(",");
-client.print(logData[i].rtcTime); client.print(",");
-client.print(logData[i].lat,6); client.print(",");
-client.print(logData[i].lon,6); client.print(",");
-client.print(logData[i].pm); client.print(",");
-client.println(logData[i].voc);
-}
-
-client.stop();
 return;
 }
 
-if(req.indexOf("/clear")>=0)
-{
-logIndex=0;
-prefs.clear();
-}
-
 client.println("HTTP/1.1 200 OK");
-client.println("Content-type:text/html");
+client.println("Content-Type: text/html");
+client.println("Connection: close");
 client.println();
+client.println(webpage());
+}
 
-client.println("<html><head>");
-client.println("<meta name='viewport' content='width=device-width, initial-scale=1'>");
-
-client.println("<style>");
-client.println("body{font-family:Helvetica;background:#f5f7fb;padding:20px}");
-client.println("table{width:100%;border-collapse:collapse;font-size:22px}");
-client.println("th,td{padding:6px;border:1px solid #ddd;text-align:center}");
-client.println("button{font-size:22px;padding:10px 20px;margin:10px}");
-client.println("</style>");
-
-client.println("<script>");
-client.println("function clearData(){fetch('/clear').then(()=>location.reload());}");
-client.println("</script>");
-
-client.println("</head><body>");
-
-client.println("<h2>ESP32 Air Quality Logger</h2>");
-
-client.println("<button onclick=\"window.location='/download'\">Download CSV</button>");
-client.println("<button onclick=\"clearData()\">Clear Data</button>");
-
-client.println("<table>");
-client.println("<tr><th>GPS Time</th><th>RTC Time</th><th>Latitude</th><th>Longitude</th><th>PM2.5 Pulse %</th><th>VOC Grade</th></tr>");
-
-for(int i=0;i<logIndex;i++)
+void loop()
 {
-client.println("<tr>");
-client.println("<td>"+logData[i].gpsTime+"</td>");
-client.println("<td>"+logData[i].rtcTime+"</td>");
-client.println("<td>"+String(logData[i].lat,6)+"</td>");
-client.println("<td>"+String(logData[i].lon,6)+"</td>");
-client.println("<td>"+String(logData[i].pm)+"</td>");
-client.println("<td>"+String(logData[i].voc)+"</td>");
-client.println("</tr>");
+
+readGPS();
+
+readZPH();
+
+if(millis()-lastUpdate > 1000)
+{
+updateTime();
+lastUpdate = millis();
 }
 
-client.println("</table>");
+handleClient();
 
-client.println("</body></html>");
-
-client.stop();
-}
 }
