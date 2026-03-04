@@ -514,6 +514,8 @@ document.getElementById("csvFile").addEventListener("change", e => {
         typeof r[latField] === "number" &&
         typeof r[lonField] === "number"
       );
+      
+      computeGPSSpeed();
 
       if(data.length === 0){
         document.getElementById("statusLine").innerText = "No valid lat/lon rows.";
@@ -535,7 +537,63 @@ document.getElementById("csvFile").addEventListener("change", e => {
 
 });
 
+function computeGPSSpeed(){
 
+  const windowSize = 10;
+
+  function haversine(lat1, lon1, lat2, lon2){
+
+    const R = 6371000;
+
+    const toRad = d => d * Math.PI / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat/2)**2 +
+      Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon/2)**2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+
+  }
+
+  for(let i=0;i<data.length;i++){
+
+    if(i < windowSize){
+      data[i].gps_speed_ms = 0;
+      data[i].gps_speed_kmh = 0;
+      continue;
+    }
+
+    let dist = 0;
+
+    for(let j=i-windowSize+1;j<=i;j++){
+
+      const p1 = data[j-1];
+      const p2 = data[j];
+
+      dist += haversine(
+        p1[latField],
+        p1[lonField],
+        p2[latField],
+        p2[lonField]
+      );
+
+    }
+
+    const speed_ms = dist / windowSize;
+
+    data[i].gps_speed_ms = speed_ms;
+    data[i].gps_speed_kmh = speed_ms * 3.6;
+
+  }
+
+}
 function buildVariableList(){
 
   const container = document.getElementById("variables");
@@ -546,7 +604,10 @@ function buildVariableList(){
   const ignore = [latField, lonField];
   if(timeField) ignore.push(timeField);
 
-  const first = data[0];
+  const first = Object.assign({}, data[0], {
+  gps_speed_ms:0,
+  gps_speed_kmh:0
+});
 
   Object.keys(first).forEach(key => {
 
