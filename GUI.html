@@ -9,7 +9,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/tz-lookup/tz.js"></script>
 <style>
 :root{
   --bg:#f5f7fb;
@@ -32,6 +32,7 @@ body{
   overflow:hidden;
 }
 
+/* Top bar */
 #topbar{
   position:absolute;
   top:0; left:0; right:0;
@@ -46,11 +47,19 @@ body{
   z-index:2000;
 }
 
-#brand{display:flex;flex-direction:column;line-height:1.05}
+#brand{
+  display:flex;
+  flex-direction:column;
+  line-height:1.05;
+}
 #brand strong{font-size:16px}
 #brand span{font-size:12px;color:var(--muted)}
 
-#viewTabs{display:flex;gap:8px;align-items:center}
+#viewTabs{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
 
 .seg{
   display:flex;
@@ -67,10 +76,12 @@ body{
   border-radius:10px;
   cursor:pointer;
   font-size:14px;
+  color:#1e293b;
 }
 .seg button.active{
   background:var(--accent);
   color:white;
+  box-shadow:0 8px 20px rgba(37,99,235,0.25);
 }
 
 #openPanelBtn{
@@ -79,28 +90,39 @@ body{
   padding:10px 12px;
   border-radius:12px;
   cursor:pointer;
+  font-size:14px;
+  color:#0f172a;
 }
+#openPanelBtn:hover{border-color:#cbd5e1}
 
+/* Main stage */
 #stage{
   position:absolute;
   top:64px; left:0; right:0; bottom:0;
 }
 
-#mapView,#graphView{
+/* Views */
+#mapView, #graphView{
   position:absolute;
   top:0; left:0; right:0; bottom:0;
 }
 
-#graphView{display:none;background:white}
+#graphView{
+  display:none;
+  background:white;
+}
 
-#map{height:100%;width:100%}
+#map{
+  height:100%;
+  width:100%;
+}
 
+/* Graph container */
 #graphWrap{
   position:absolute;
   top:0; left:0; right:0; bottom:0;
   padding:18px;
 }
-
 #graphCard{
   height:100%;
   width:100%;
@@ -108,50 +130,81 @@ body{
   border:1px solid var(--border);
   border-radius:18px;
   box-shadow:var(--shadow);
-  overflow:hidden;
   display:flex;
   flex-direction:column;
 }
-
 #graphHead{
   padding:14px 16px;
   border-bottom:1px solid var(--border);
+  display:flex;
+  gap:10px;
+  align-items:baseline;
 }
-
+#graphHead strong{font-size:16px}
+#graphHead span{font-size:12px;color:var(--muted)}
 #chartArea{
   position:relative;
   flex:1;
-  padding:10px;
+  padding:10px 14px 40px 14px;
 }
 
 #chart{
-  width:100%!important;
-  height:100%!important;
+  position:absolute;
+  top:10px;
+  left:14px;
+  right:14px;
+  bottom:40px;
 }
 
+/* Slide-over panel */
 #drawer{
   position:absolute;
   top:64px;
   left:0;
   bottom:0;
-  width:min(360px,92vw);
+  width:min(360px, 92vw);
   background:var(--card);
   border-right:1px solid var(--border);
+  box-shadow:var(--shadow);
   transform:translateX(-110%);
-  transition:transform .25s;
+  transition:transform 0.25s ease;
   z-index:2500;
   display:flex;
   flex-direction:column;
 }
 
-#drawer.open{transform:translateX(0)}
+#drawer.open{
+  transform:translateX(0);
+}
 
 #drawerHeader{
-  padding:14px;
+  padding:14px 14px 12px 14px;
   border-bottom:1px solid var(--border);
   display:flex;
+  align-items:center;
   justify-content:space-between;
+  gap:10px;
 }
+
+#drawerHeader .title{
+  display:flex;
+  flex-direction:column;
+  line-height:1.15;
+}
+#drawerHeader .title strong{font-size:15px}
+#drawerHeader .title span{font-size:12px;color:var(--muted)}
+
+#closeBtn{
+  border:0;
+  background:#f1f5f9;
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:18px;
+  line-height:36px;
+}
+#closeBtn:hover{background:#e2e8f0}
 
 #drawerBody{
   padding:14px;
@@ -166,23 +219,65 @@ body{
   margin-bottom:12px;
 }
 
-#variables{
+.block h3{
+  margin:0 0 10px 0;
+  font-size:13px;
+  color:#0f172a;
+  letter-spacing:0.2px;
+}
+
+#fileRow{
   display:flex;
   flex-direction:column;
   gap:8px;
+}
+
+#csvFile{
+  width:100%;
+  font-size:14px;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid #cbd5e1;
+  background:white;
+}
+
+.smallHint{
+  font-size:12px;
+  color:var(--muted);
+}
+
+#variables{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:46vh;
+  overflow:auto;
+  padding-right:4px;
 }
 
 .radioRow{
   display:flex;
   gap:10px;
   align-items:center;
-  padding:10px;
+  padding:10px 10px;
   border:1px solid #e2e8f0;
   border-radius:14px;
   background:white;
   cursor:pointer;
 }
+.radioRow:hover{
+  border-color:#cbd5e1;
+}
+.radioRow input{
+  transform:scale(1.2);
+}
 
+#statusLine{
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* Legend overlay on map */
 #legendBox{
   position:absolute;
   right:16px;
@@ -192,15 +287,22 @@ body{
   border:1px solid var(--border);
   border-radius:16px;
   box-shadow:var(--shadow);
-  padding:12px;
+  padding:12px 12px 10px 12px;
   width:220px;
+  pointer-events:none;
+}
+
+#legendTitle{
+  font-weight:bold;
+  font-size:13px;
+  margin-bottom:6px;
 }
 
 #legendBar{
   height:14px;
   width:100%;
   border-radius:10px;
-  background:linear-gradient(to right,blue,cyan,lime,yellow,red);
+  background:linear-gradient(to right, blue, cyan, lime, yellow, red);
   margin-bottom:6px;
 }
 
@@ -208,7 +310,18 @@ body{
   display:flex;
   justify-content:space-between;
   font-size:12px;
+  color:#334155;
 }
+
+/* Dimmer when drawer open on small screens */
+#scrim{
+  position:absolute;
+  top:64px; left:0; right:0; bottom:0;
+  background:rgba(2,6,23,0.35);
+  z-index:2400;
+  display:none;
+}
+#scrim.show{display:block}
 
 </style>
 </head>
@@ -216,320 +329,510 @@ body{
 <body>
 
 <div id="topbar">
-<div id="brand">
-<strong>Sensor Log Visualiser</strong>
-</div>
+  <div id="brand">
+    <strong>Sensor Log Visualiser</strong>
+  </div>
 
-<div id="viewTabs">
-<div class="seg">
-<button id="btnMap" class="active">Map</button>
-<button id="btnGraph">Graph</button>
-</div>
-<button id="openPanelBtn">Controls</button>
-</div>
+  <div id="viewTabs">
+    <div class="seg">
+      <button id="btnMap" class="active" type="button">Map</button>
+      <button id="btnGraph" type="button">Graph</button>
+    </div>
+    <button id="openPanelBtn" type="button">Controls</button>
+  </div>
 </div>
 
 <div id="stage">
+  <div id="mapView">
+    <div id="map"></div>
 
-<div id="mapView">
-<div id="map"></div>
+    <div id="legendBox">
+      <div id="legendTitle">Variable</div>
+      <div id="legendBar"></div>
+      <div id="legendScale">
+        <span id="legendMin">0</span>
+        <span id="legendMax">1</span>
+      </div>
+    </div>
+  </div>
 
-<div id="legendBox">
-<div id="legendTitle">Variable</div>
-<div id="legendBar"></div>
-<div id="legendScale">
-<span id="legendMin">0</span>
-<span id="legendMax">1</span>
-</div>
-</div>
-
-</div>
-
-<div id="graphView">
-<div id="graphWrap">
-<div id="graphCard">
-<div id="graphHead">
-<strong id="graphTitle">Graph</strong>
-</div>
-<div id="chartArea">
-<canvas id="chart"></canvas>
-</div>
-</div>
-</div>
+  <div id="graphView">
+    <div id="graphWrap">
+      <div id="graphCard">
+        <div id="graphHead">
+          <strong id="graphTitle">Graph</strong>
+          <span id="graphSub">Select a variable to plot vs time</span>
+        </div>
+        <div id="chartArea">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-</div>
+<div id="scrim"></div>
 
 <div id="drawer">
-<div id="drawerHeader">
-<strong>Controls</strong>
-<button id="closeBtn">×</button>
-</div>
+  <div id="drawerHeader">
+    <div class="title">
+      <strong>Controls</strong>
+      <span>Load file + choose variable</span>
+    </div>
+    <button id="closeBtn" type="button">×</button>
+  </div>
 
-<div id="drawerBody">
+  <div id="drawerBody">
 
-<div class="block">
-<h3>Load file</h3>
-<input type="file" id="csvFile">
-<div id="statusLine">No file loaded</div>
-</div>
+    <div class="block">
+      <h3>Load file</h3>
+      <div id="fileRow">
+        <input type="file" id="csvFile" accept=".csv,.txt">
+        <div class="smallHint">Needs lat/lon (or latitude/longitude). Time uses gps_time, rtc_time, or time_s if present.</div>
+        <div id="statusLine">No file loaded.</div>
+      </div>
+    </div>
 
-<div class="block">
-<h3>Colour / Graph variable</h3>
-<div id="variables"></div>
-</div>
+    <div class="block">
+      <h3>Colour / Graph variable</h3>
+      <div id="variables"></div>
+      <div class="smallHint" style="margin-top:10px;">Choose any numeric column (excluding lat/lon/time).</div>
+    </div>
 
-</div>
+  </div>
 </div>
 
 <script>
 
-let map=L.map('map');
-let markersLayer=L.layerGroup().addTo(map);
+let map = L.map('map');
+let markersLayer = L.layerGroup().addTo(map);
 
-let data=[];
-let activeVariable=null;
+let data = [];
+let selectedVariables = [];
 
-let latField="lat";
-let lonField="lon";
+let latField = "lat";
+let lonField = "lon";
+let timeField = null;
 
-let chart=null;
-let minValue=0;
-let maxValue=1;
+let chart = null;
+
+let minValue = 0;
+let maxValue = 1;
+
+let timezone = null;
 
 L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{ attribution:'© OpenStreetMap contributors'}
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '© OpenStreetMap contributors' }
 ).addTo(map);
 
-/* ---------- drawer ---------- */
 
-const drawer=document.getElementById("drawer");
+/* ---------- UI: Drawer ---------- */
+const drawer = document.getElementById("drawer");
+const scrim = document.getElementById("scrim");
 
-document.getElementById("openPanelBtn").onclick=()=>drawer.classList.add("open");
-document.getElementById("closeBtn").onclick=()=>drawer.classList.remove("open");
-
-drawer.classList.add("open");
-
-/* ---------- view ---------- */
-
-function setView(v){
-
-if(v==="map"){
-document.getElementById("mapView").style.display="block";
-document.getElementById("graphView").style.display="none";
-map.invalidateSize();
-}else{
-document.getElementById("mapView").style.display="none";
-document.getElementById("graphView").style.display="block";
-drawGraph();
+function openDrawer(){
+  drawer.classList.add("open");
+  if(window.innerWidth < 900) scrim.classList.add("show");
+}
+function closeDrawer(){
+  drawer.classList.remove("open");
+  scrim.classList.remove("show");
 }
 
+document.getElementById("openPanelBtn").addEventListener("click", openDrawer);
+document.getElementById("closeBtn").addEventListener("click", closeDrawer);
+scrim.addEventListener("click", closeDrawer);
+
+/* Open by default so file load is obvious */
+openDrawer();
+
+
+/* ---------- UI: View switching ---------- */
+function setView(view){
+  const mapView = document.getElementById("mapView");
+  const graphView = document.getElementById("graphView");
+  const btnMap = document.getElementById("btnMap");
+  const btnGraph = document.getElementById("btnGraph");
+
+  if(view === "map"){
+    mapView.style.display = "block";
+    graphView.style.display = "none";
+    btnMap.classList.add("active");
+    btnGraph.classList.remove("active");
+    map.invalidateSize();
+  }else{
+    mapView.style.display = "none";
+    graphView.style.display = "block";
+    btnGraph.classList.add("active");
+    btnMap.classList.remove("active");
+    drawGraph();
+  }
 }
 
-btnMap.onclick=()=>setView("map");
-btnGraph.onclick=()=>setView("graph");
+document.getElementById("btnMap").addEventListener("click", ()=>setView("map"));
+document.getElementById("btnGraph").addEventListener("click", ()=>setView("graph"));
 
-/* ---------- distance ---------- */
+/* default */
+setView("map");
 
-function haversine(lat1,lon1,lat2,lon2){
 
-const R=6371000;
+/* ---------- File load ---------- */
+document.getElementById("csvFile").addEventListener("change", e => {
 
-const dLat=(lat2-lat1)*Math.PI/180;
-const dLon=(lon2-lon1)*Math.PI/180;
+  const file = e.target.files[0];
+  if(!file) return;
 
-const a=
-Math.sin(dLat/2)**2+
-Math.cos(lat1*Math.PI/180)*
-Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)**2;
+  document.getElementById("statusLine").innerText = "Loading…";
 
-const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  Papa.parse(file, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    transformHeader: h => (h ?? "").trim(),
+    complete: res => {
 
-return R*c;
+      const rows = res.data || [];
+      if(rows.length === 0){
+        document.getElementById("statusLine").innerText = "File empty.";
+        alert("File empty");
+        return;
+      }
 
-}
+      const keys = Object.keys(rows[0] || {});
+      const lower = keys.map(k => (k || "").toLowerCase());
 
-/* ---------- rolling speed ---------- */
+      latField = lower.includes("latitude") ? "latitude" : "lat";
+      lonField = lower.includes("longitude") ? "longitude" : "lon";
 
-function computeSpeed(){
+      timeField = null;
+      if(lower.includes("gps_time")) timeField = "gps_time";
+      else if(lower.includes("rtc_time")) timeField = "rtc_time";
+      else if(lower.includes("time_s")) timeField = "time_s";
 
-let window=[];
+      data = rows.filter(r =>
+        typeof r[latField] === "number" &&
+        typeof r[lonField] === "number"
+      );
 
-for(let i=0;i<data.length;i++){
+      if(data.length === 0){
+        document.getElementById("statusLine").innerText = "No valid lat/lon rows.";
+        alert("No valid lat/lon data found.");
+        return;
+      }
 
-if(i===0){
-data[i].speed_kmh=0;
-continue;
-}
+      activeVariable = null;
+      markersLayer.clearLayers();
+      buildVariableList();
+      zoomToData();
 
-let d=haversine(
-data[i-1][latField],
-data[i-1][lonField],
-data[i][latField],
-data[i][lonField]
-);
+      document.getElementById("statusLine").innerText = `Loaded ${data.length} rows. Select a variable.`;
 
-let speed=d*3.6;
+      // close drawer on small screens after load
+      if(window.innerWidth < 900) closeDrawer();
+    }
+  });
 
-window.push(speed);
-
-if(window.length>10)window.shift();
-
-let avg=window.reduce((a,b)=>a+b,0)/window.length;
-
-data[i].speed_kmh=avg;
-
-}
-
-}
-
-/* ---------- file load ---------- */
-
-csvFile.addEventListener("change",e=>{
-
-let file=e.target.files[0];
-if(!file)return;
-
-Papa.parse(file,{
-header:true,
-dynamicTyping:true,
-skipEmptyLines:true,
-complete:res=>{
-
-data=res.data.filter(r=>typeof r.lat==="number");
-
-computeSpeed();
-
-buildVariableList();
-zoomToData();
-
-statusLine.innerText=`Loaded ${data.length} rows`;
-
-}
 });
 
-});
-
-/* ---------- variables ---------- */
 
 function buildVariableList(){
 
-variables.innerHTML="";
+  const container = document.getElementById("variables");
+  container.innerHTML = "";
 
-let keys=Object.keys(data[0]);
+  if(!data || data.length === 0) return;
 
-keys.forEach(k=>{
+  const ignore = [latField, lonField];
+  if(timeField) ignore.push(timeField);
 
-if(typeof data[0][k]!=="number")return;
+  const first = data[0];
 
-let row=document.createElement("label");
-row.className="radioRow";
+  Object.keys(first).forEach(key => {
 
-row.innerHTML=`
-<input type="radio" name="var" value="${k}">
-<span>${k}</span>
-`;
+    if(ignore.includes(key)) return;
+    if(typeof first[key] !== "number") return;
 
-row.onclick=()=>{
-selectVariable(k);
-row.querySelector("input").checked=true;
-};
+    const row = document.createElement("label");
+    row.className = "radioRow";
 
-variables.appendChild(row);
+    row.innerHTML = `
+      <input type="checkbox" value="${key}">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">${key}</div>
+        <div style="font-size:12px;color:#64748b;">numeric</div>
+      </div>
+    `;
 
-});
+    const input = row.querySelector("input");
+
+    input.addEventListener("change", () => {
+
+      if(input.checked){
+        if(selectedVariables.length >= 2){
+          input.checked = false;
+          alert("Maximum of 2 variables allowed");
+          return;
+        }
+        selectedVariables.push(key);
+      }else{
+        selectedVariables = selectedVariables.filter(v => v !== key);
+      }
+
+      updateGraphHeader();
+
+/* update map using first selected variable */
+if(selectedVariables.length > 0){
+
+  plotMarkers(selectedVariables[0]);
+  updateLegend(selectedVariables[0]);
+
+}else{
+
+  /* clear map if nothing selected */
+  markersLayer.clearLayers();
+  updateLegend(null);
 
 }
 
-/* ---------- select variable ---------- */
-
-function selectVariable(k){
-
-activeVariable=k;
-
-plotMarkers();
 drawGraph();
+    });
+
+    container.appendChild(row);
+  });
 
 }
 
-/* ---------- map ---------- */
 
+/* ---------- Variable selection ---------- */
+function selectVariable(key){
+  activeVariable = key;
+  plotMarkers();
+  updateLegend();
+  updateGraphHeader();
+  drawGraph();
+}
+
+function updateGraphHeader(){
+
+  const title = document.getElementById("graphTitle");
+  const sub = document.getElementById("graphSub");
+
+  if(selectedVariables.length === 0){
+    title.innerText = "Graph";
+    sub.innerText = "Select variables to plot";
+    return;
+  }
+
+  title.innerText = selectedVariables.join(" + ");
+
+  if(timeField)
+    sub.innerText = `Plotted against ${timeField}`;
+  else
+    sub.innerText = "No time field found (using row index)";
+
+}
+
+
+/* ---------- Map ---------- */
 function zoomToData(){
 
-let bounds=L.latLngBounds(data.map(d=>[d.lat,d.lon]));
-map.fitBounds(bounds);
+  const bounds = L.latLngBounds(data.map(d => [d[latField], d[lonField]]));
+  map.fitBounds(bounds, { padding: [40, 40] });
+
+  map.invalidateSize();
+
+  /* determine timezone from first GPS point */
+  const lat = data[0][latField];
+  const lon = data[0][lonField];
+
+  try{
+    timezone = tzlookup(lat, lon);
+  }catch(e){
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
 
 }
 
-function plotMarkers(){
+function formatLocal(date){
 
-markersLayer.clearLayers();
+  if(!timezone) return date.toISOString();
 
-let values=data.map(d=>d[activeVariable]);
-
-minValue=Math.min(...values);
-maxValue=Math.max(...values);
-
-data.forEach(d=>{
-
-let v=d[activeVariable];
-
-let t=(v-minValue)/(maxValue-minValue||1);
-
-let color=getColor(t);
-
-let marker=L.circleMarker(
-[d.lat,d.lon],
-{radius:6,color,fillColor:color,fillOpacity:0.9}
-);
-
-markersLayer.addLayer(marker);
-
-});
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(date);
 
 }
 
-/* ---------- graph ---------- */
+function plotMarkers(variable){
 
+  markersLayer.clearLayers();
+  if(!variable) return;
+
+  const values = data.map(d => d[variable]).filter(v => typeof v === "number");
+
+  if(values.length === 0) return;
+
+  minValue = Math.min(...values);
+  maxValue = Math.max(...values);
+
+  data.forEach(d => {
+
+    const v = d[variable];
+    if(typeof v !== "number") return;
+
+    const t = (v - minValue) / (maxValue - minValue || 1);
+    const color = getColor(t);
+
+    let popup = "";
+    Object.keys(d).forEach(k => {
+      popup += `<b>${k}</b>: ${d[k]}<br>`;
+    });
+
+    const marker = L.circleMarker(
+      [d[latField], d[lonField]],
+      {
+        radius:6,
+        color,
+        fillColor:color,
+        fillOpacity:0.9
+      }
+    ).bindPopup(popup);
+
+    markersLayer.addLayer(marker);
+
+  });
+
+}
+
+
+/* ---------- Legend ---------- */
+function updateLegend(variable){
+  document.getElementById("legendTitle").innerText = variable || "Variable";
+  document.getElementById("legendMin").innerText = isFinite(minValue) ? minValue.toFixed(2) : "0";
+  document.getElementById("legendMax").innerText = isFinite(maxValue) ? maxValue.toFixed(2) : "1";
+}
+
+
+/* ---------- Graph ---------- */
 function drawGraph(){
 
-if(!activeVariable)return;
+  if(selectedVariables.length === 0) return;
 
-let labels=data.map((_,i)=>i);
-let values=data.map(d=>d[activeVariable]);
+  const labels = data.map((d,i)=>{
 
-let ctx=document.getElementById("chart");
+    if(timeField && d[timeField] != null){
 
-if(chart)chart.destroy();
+      let t = d[timeField];
 
-chart=new Chart(ctx,{
-type:"line",
-data:{
-labels:labels,
-datasets:[{
-label:activeVariable,
-data:values,
-borderWidth:3,
-pointRadius:0
-}]
-},
-options:{
-responsive:true,
-maintainAspectRatio:false
+      if(typeof t === "number"){
+
+        let date;
+
+        if(t > 1e12) date = new Date(t);
+        else if(t > 1e9) date = new Date(t*1000);
+        else return t;
+
+        return formatLocal(date);
+      }
+
+      if(typeof t === "string"){
+
+        let ts = t.trim();
+        if(!ts.endsWith("Z")) ts = ts.replace(" ", "T") + "Z";
+
+        const date = new Date(ts);
+        if(!isNaN(date)) return formatLocal(date);
+      }
+
+      return t;
+    }
+
+    return i;
+
+  });
+
+  const colors = ["#2563eb","#ef4444"];
+
+  const datasets = selectedVariables.map((v,i)=>({
+
+    label: v,
+    data: data.map(d=>d[v]),
+    borderColor: colors[i],
+    backgroundColor: colors[i],
+    borderWidth: 3,
+    pointRadius: 0,
+    tension:0.2,
+    yAxisID: i === 0 ? "y" : "y1"
+
+  }));
+
+  const ctx = document.getElementById("chart");
+
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:labels,
+      datasets:datasets
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+
+      plugins:{
+        legend:{display:true}
+      },
+
+      scales:{
+
+        x:{
+          ticks:{
+            autoSkip:true,
+            maxRotation:90,
+            minRotation:90
+          },
+          title:{
+            display:true,
+            text:timeField || "index"
+          }
+        },
+
+        y:{
+          type:"linear",
+          position:"left",
+          title:{
+            display:true,
+            text:selectedVariables[0] || ""
+          }
+        },
+
+        y1:{
+          type:"linear",
+          position:"right",
+          grid:{
+            drawOnChartArea:false
+          },
+          title:{
+            display:true,
+            text:selectedVariables[1] || ""
+          }
+        }
+
+      }
+    }
+  });
+
 }
-});
 
-}
-
-/* ---------- colour ---------- */
-
+/* ---------- Colour ---------- */
 function getColor(t){
-
-let hue=240-240*t;
-return `hsl(${hue},100%,45%)`;
-
+  const hue = 240 - 240 * t;
+  return `hsl(${hue},100%,45%)`;
 }
 
 </script>
