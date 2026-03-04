@@ -11,369 +11,695 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-
-body{
-margin:0;
-font-family:Helvetica,Arial,sans-serif;
-background:#f5f7fb;
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --accent:#2563eb;
+  --accentDark:#1e40af;
+  --border:#e2e8f0;
+  --shadow:0 10px 30px rgba(2,6,23,0.12);
 }
 
-#viewer{
-position:absolute;
-top:60px;
-left:0;
-right:0;
-bottom:0;
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  overflow:hidden;
+}
+
+/* Top bar */
+#topbar{
+  position:absolute;
+  top:0; left:0; right:0;
+  height:64px;
+  background:rgba(255,255,255,0.86);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 14px;
+  z-index:2000;
+}
+
+#brand{
+  display:flex;
+  flex-direction:column;
+  line-height:1.05;
+}
+#brand strong{font-size:16px}
+#brand span{font-size:12px;color:var(--muted)}
+
+#viewTabs{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.seg{
+  display:flex;
+  background:#eef2ff;
+  border:1px solid #dbeafe;
+  border-radius:12px;
+  padding:4px;
+  gap:4px;
+}
+.seg button{
+  border:0;
+  background:transparent;
+  padding:10px 14px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:14px;
+  color:#1e293b;
+}
+.seg button.active{
+  background:var(--accent);
+  color:white;
+  box-shadow:0 8px 20px rgba(37,99,235,0.25);
+}
+
+#openPanelBtn{
+  border:1px solid var(--border);
+  background:white;
+  padding:10px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:14px;
+  color:#0f172a;
+}
+#openPanelBtn:hover{border-color:#cbd5e1}
+
+/* Main stage */
+#stage{
+  position:absolute;
+  top:64px; left:0; right:0; bottom:0;
+}
+
+/* Views */
+#mapView, #graphView{
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+}
+
+#graphView{
+  display:none;
+  background:white;
 }
 
 #map{
-height:100%;
-width:100%;
+  height:100%;
+  width:100%;
 }
 
-#chartContainer{
-height:100%;
-width:100%;
-display:none;
-padding:20px;
-background:#ffffff;
+/* Graph container */
+#graphWrap{
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  padding:18px;
 }
-
+#graphCard{
+  height:100%;
+  width:100%;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+#graphHead{
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+}
+#graphHead strong{font-size:16px}
+#graphHead span{font-size:12px;color:var(--muted)}
+#chartArea{
+  position:relative;
+  flex:1;
+  padding:10px 14px 14px 14px;
+}
 #chart{
-width:100%;
-height:100%;
+  width:100% !important;
+  height:100% !important;
 }
 
-#tabs{
-position:absolute;
-top:0;
-left:0;
-right:0;
-height:60px;
-display:flex;
-align-items:end;
-background:#e5e7eb;
-padding-left:10px;
+/* Slide-over panel */
+#drawer{
+  position:absolute;
+  top:64px;
+  left:0;
+  bottom:0;
+  width:min(360px, 92vw);
+  background:var(--card);
+  border-right:1px solid var(--border);
+  box-shadow:var(--shadow);
+  transform:translateX(-110%);
+  transition:transform 0.25s ease;
+  z-index:2500;
+  display:flex;
+  flex-direction:column;
 }
 
-.tab{
-background:#d1d5db;
-padding:12px 24px;
-margin-right:4px;
-border-top-left-radius:8px;
-border-top-right-radius:8px;
-cursor:pointer;
-font-size:16px;
+#drawer.open{
+  transform:translateX(0);
 }
 
-.tab.active{
-background:#2563eb;
-color:white;
-font-weight:bold;
+#drawerHeader{
+  padding:14px 14px 12px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
 }
 
-#ui{
-position:absolute;
-top:70px;
-left:15px;
-background:white;
-padding:16px;
-border-radius:10px;
-box-shadow:0 6px 25px rgba(0,0,0,0.15);
-z-index:1000;
-width:280px;
+#drawerHeader .title{
+  display:flex;
+  flex-direction:column;
+  line-height:1.15;
+}
+#drawerHeader .title strong{font-size:15px}
+#drawerHeader .title span{font-size:12px;color:var(--muted)}
+
+#closeBtn{
+  border:0;
+  background:#f1f5f9;
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:18px;
+  line-height:36px;
+}
+#closeBtn:hover{background:#e2e8f0}
+
+#drawerBody{
+  padding:14px;
+  overflow:auto;
 }
 
-#variables label{
-display:block;
-margin-bottom:8px;
-font-size:15px;
+.block{
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:12px;
 }
 
-input[type=file]{
-width:100%;
-font-size:15px;
-margin-bottom:10px;
+.block h3{
+  margin:0 0 10px 0;
+  font-size:13px;
+  color:#0f172a;
+  letter-spacing:0.2px;
 }
+
+#fileRow{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#csvFile{
+  width:100%;
+  font-size:14px;
+  padding:10px;
+  border-radius:12px;
+  border:1px solid #cbd5e1;
+  background:white;
+}
+
+.smallHint{
+  font-size:12px;
+  color:var(--muted);
+}
+
+#variables{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:46vh;
+  overflow:auto;
+  padding-right:4px;
+}
+
+.radioRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:white;
+  cursor:pointer;
+}
+.radioRow:hover{
+  border-color:#cbd5e1;
+}
+.radioRow input{
+  transform:scale(1.2);
+}
+
+#statusLine{
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* Legend overlay on map */
+#legendBox{
+  position:absolute;
+  right:16px;
+  bottom:16px;
+  z-index:1200;
+  background:rgba(255,255,255,0.92);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:12px 12px 10px 12px;
+  width:220px;
+  pointer-events:none;
+}
+
+#legendTitle{
+  font-weight:bold;
+  font-size:13px;
+  margin-bottom:6px;
+}
+
+#legendBar{
+  height:14px;
+  width:100%;
+  border-radius:10px;
+  background:linear-gradient(to right, blue, cyan, lime, yellow, red);
+  margin-bottom:6px;
+}
+
+#legendScale{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color:#334155;
+}
+
+/* Dimmer when drawer open on small screens */
+#scrim{
+  position:absolute;
+  top:64px; left:0; right:0; bottom:0;
+  background:rgba(2,6,23,0.35);
+  z-index:2400;
+  display:none;
+}
+#scrim.show{display:block}
 
 </style>
 </head>
 
 <body>
 
-<div id="tabs">
+<div id="topbar">
+  <div id="brand">
+    <strong>Sensor Log Visualiser</strong>
+  </div>
 
-<div class="tab active" id="tabMap">Map</div>
-<div class="tab" id="tabGraph">Graph</div>
-
+  <div id="viewTabs">
+    <div class="seg">
+      <button id="btnMap" class="active" type="button">Map</button>
+      <button id="btnGraph" type="button">Graph</button>
+    </div>
+    <button id="openPanelBtn" type="button">Controls</button>
+  </div>
 </div>
 
-<div id="viewer">
+<div id="stage">
+  <div id="mapView">
+    <div id="map"></div>
 
-<div id="map"></div>
+    <div id="legendBox">
+      <div id="legendTitle">Variable</div>
+      <div id="legendBar"></div>
+      <div id="legendScale">
+        <span id="legendMin">0</span>
+        <span id="legendMax">1</span>
+      </div>
+    </div>
+  </div>
 
-<div id="chartContainer">
-<canvas id="chart"></canvas>
+  <div id="graphView">
+    <div id="graphWrap">
+      <div id="graphCard">
+        <div id="graphHead">
+          <strong id="graphTitle">Graph</strong>
+          <span id="graphSub">Select a variable to plot vs time</span>
+        </div>
+        <div id="chartArea">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-</div>
+<div id="scrim"></div>
 
-<div id="ui">
+<div id="drawer">
+  <div id="drawerHeader">
+    <div class="title">
+      <strong>Controls</strong>
+      <span>Load file + choose variable</span>
+    </div>
+    <button id="closeBtn" type="button">×</button>
+  </div>
 
-<strong>Sensor Log</strong><br><br>
+  <div id="drawerBody">
 
-<input type="file" id="csvFile" accept=".csv,.txt">
+    <div class="block">
+      <h3>Load file</h3>
+      <div id="fileRow">
+        <input type="file" id="csvFile" accept=".csv,.txt">
+        <div class="smallHint">Needs lat/lon (or latitude/longitude). Time uses gps_time, rtc_time, or time_s if present.</div>
+        <div id="statusLine">No file loaded.</div>
+      </div>
+    </div>
 
-<div id="variables"></div>
+    <div class="block">
+      <h3>Colour / Graph variable</h3>
+      <div id="variables"></div>
+      <div class="smallHint" style="margin-top:10px;">Choose any numeric column (excluding lat/lon/time).</div>
+    </div>
 
+  </div>
 </div>
 
 <script>
 
-let map=L.map('map');
-let markersLayer=L.layerGroup().addTo(map);
+let map = L.map('map');
+let markersLayer = L.layerGroup().addTo(map);
 
-let data=[];
-let activeVariable=null;
+let data = [];
+let activeVariable = null;
 
-let latField="lat";
-let lonField="lon";
-let timeField=null;
+let latField = "lat";
+let lonField = "lon";
+let timeField = null;
 
-let chart=null;
+let chart = null;
+
+let minValue = 0;
+let maxValue = 1;
 
 L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{attribution:'© OpenStreetMap contributors'}
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '© OpenStreetMap contributors' }
 ).addTo(map);
 
 
+/* ---------- UI: Drawer ---------- */
+const drawer = document.getElementById("drawer");
+const scrim = document.getElementById("scrim");
 
-function activateTab(tab){
-
-document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-
-tab.classList.add("active");
-
-if(tab.id==="tabMap"){
-
-document.getElementById("map").style.display="block";
-document.getElementById("chartContainer").style.display="none";
-map.invalidateSize();
-
+function openDrawer(){
+  drawer.classList.add("open");
+  if(window.innerWidth < 900) scrim.classList.add("show");
+}
+function closeDrawer(){
+  drawer.classList.remove("open");
+  scrim.classList.remove("show");
 }
 
-if(tab.id==="tabGraph"){
+document.getElementById("openPanelBtn").addEventListener("click", openDrawer);
+document.getElementById("closeBtn").addEventListener("click", closeDrawer);
+scrim.addEventListener("click", closeDrawer);
 
-document.getElementById("map").style.display="none";
-document.getElementById("chartContainer").style.display="block";
-drawGraph();
+/* Open by default so file load is obvious */
+openDrawer();
 
+
+/* ---------- UI: View switching ---------- */
+function setView(view){
+  const mapView = document.getElementById("mapView");
+  const graphView = document.getElementById("graphView");
+  const btnMap = document.getElementById("btnMap");
+  const btnGraph = document.getElementById("btnGraph");
+
+  if(view === "map"){
+    mapView.style.display = "block";
+    graphView.style.display = "none";
+    btnMap.classList.add("active");
+    btnGraph.classList.remove("active");
+    map.invalidateSize();
+  }else{
+    mapView.style.display = "none";
+    graphView.style.display = "block";
+    btnGraph.classList.add("active");
+    btnMap.classList.remove("active");
+    drawGraph();
+  }
 }
 
-}
+document.getElementById("btnMap").addEventListener("click", ()=>setView("map"));
+document.getElementById("btnGraph").addEventListener("click", ()=>setView("graph"));
 
-document.getElementById("tabMap").onclick=function(){activateTab(this)};
-document.getElementById("tabGraph").onclick=function(){activateTab(this)};
+/* default */
+setView("map");
 
 
+/* ---------- File load ---------- */
+document.getElementById("csvFile").addEventListener("change", e => {
 
-document.getElementById("csvFile").addEventListener("change",e=>{
+  const file = e.target.files[0];
+  if(!file) return;
 
-const file=e.target.files[0];
+  document.getElementById("statusLine").innerText = "Loading…";
 
-Papa.parse(file,{
-header:true,
-dynamicTyping:true,
-skipEmptyLines:true,
-transformHeader:h=>h.trim(),
+  Papa.parse(file, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    transformHeader: h => (h ?? "").trim(),
+    complete: res => {
 
-complete:res=>{
+      const rows = res.data || [];
+      if(rows.length === 0){
+        document.getElementById("statusLine").innerText = "File empty.";
+        alert("File empty");
+        return;
+      }
 
-const rows=res.data;
+      const keys = Object.keys(rows[0] || {});
+      const lower = keys.map(k => (k || "").toLowerCase());
 
-if(rows.length===0){
-alert("File empty");
-return;
-}
+      latField = lower.includes("latitude") ? "latitude" : "lat";
+      lonField = lower.includes("longitude") ? "longitude" : "lon";
 
-const keys=Object.keys(rows[0]);
+      timeField = null;
+      if(lower.includes("gps_time")) timeField = "gps_time";
+      else if(lower.includes("rtc_time")) timeField = "rtc_time";
+      else if(lower.includes("time_s")) timeField = "time_s";
 
-const lower=keys.map(k=>k.toLowerCase());
+      data = rows.filter(r =>
+        typeof r[latField] === "number" &&
+        typeof r[lonField] === "number"
+      );
 
-if(lower.includes("lat"))latField="lat";
-if(lower.includes("latitude"))latField="latitude";
+      if(data.length === 0){
+        document.getElementById("statusLine").innerText = "No valid lat/lon rows.";
+        alert("No valid lat/lon data found.");
+        return;
+      }
 
-if(lower.includes("lon"))lonField="lon";
-if(lower.includes("longitude"))lonField="longitude";
+      activeVariable = null;
+      markersLayer.clearLayers();
+      buildVariableList();
+      zoomToData();
 
-if(lower.includes("gps_time"))timeField="gps_time";
-else if(lower.includes("rtc_time"))timeField="rtc_time";
-else if(lower.includes("time_s"))timeField="time_s";
+      document.getElementById("statusLine").innerText = `Loaded ${data.length} rows. Select a variable.`;
 
-data=rows.filter(r=>
-typeof r[latField]==="number" &&
-typeof r[lonField]==="number"
-);
-
-if(data.length===0){
-alert("No valid lat/lon data");
-return;
-}
-
-buildVariableList();
-zoomToCSV();
-
-}
+      // close drawer on small screens after load
+      if(window.innerWidth < 900) closeDrawer();
+    }
+  });
 
 });
 
-});
 
-
-
+/* ---------- Variables list ---------- */
 function buildVariableList(){
 
-const container=document.getElementById("variables");
+  const container = document.getElementById("variables");
+  container.innerHTML = "";
 
-container.innerHTML="<strong>Variable</strong><br><br>";
+  if(!data || data.length === 0) return;
 
-const ignore=[latField,lonField,timeField];
+  const ignore = [latField, lonField];
+  if(timeField) ignore.push(timeField);
 
-Object.keys(data[0]).forEach(key=>{
+  const first = data[0];
 
-if(ignore.includes(key))return;
-if(typeof data[0][key]!=="number")return;
+  Object.keys(first).forEach(key => {
+    if(ignore.includes(key)) return;
+    if(typeof first[key] !== "number") return;
 
-const label=document.createElement("label");
+    const row = document.createElement("label");
+    row.className = "radioRow";
 
-label.innerHTML=`
-<input type="radio" name="variable" value="${key}">
-${key}
-`;
+    row.innerHTML = `
+      <input type="radio" name="variable" value="${key}">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">${key}</div>
+        <div style="font-size:12px;color:#64748b;">numeric</div>
+      </div>
+    `;
 
-label.querySelector("input").addEventListener("change",()=>{
-activeVariable=key;
-plotMarkers();
-drawGraph();
-});
+    row.addEventListener("click", () => {
+      const input = row.querySelector("input");
+      input.checked = true;
+      selectVariable(key);
+    });
 
-container.appendChild(label);
+    row.querySelector("input").addEventListener("change", () => {
+      selectVariable(key);
+    });
 
-});
+    container.appendChild(row);
+  });
 
 }
 
 
+/* ---------- Variable selection ---------- */
+function selectVariable(key){
+  activeVariable = key;
+  plotMarkers();
+  updateLegend();
+  updateGraphHeader();
+  drawGraph();
+}
 
-function zoomToCSV(){
+function updateGraphHeader(){
+  const title = document.getElementById("graphTitle");
+  const sub = document.getElementById("graphSub");
 
-const bounds=L.latLngBounds(data.map(d=>[d[latField],d[lonField]]));
+  if(!activeVariable){
+    title.innerText = "Graph";
+    sub.innerText = "Select a variable to plot vs time";
+    return;
+  }
 
-map.fitBounds(bounds,{padding:[40,40]});
-
+  title.innerText = activeVariable;
+  sub.innerText = timeField ? `Plotted against ${timeField}` : "No time field found (using row index)";
 }
 
 
+/* ---------- Map ---------- */
+function zoomToData(){
+  const bounds = L.latLngBounds(data.map(d => [d[latField], d[lonField]]));
+  map.fitBounds(bounds, { padding: [40, 40] });
+  map.invalidateSize();
+}
 
 function plotMarkers(){
 
-markersLayer.clearLayers();
+  markersLayer.clearLayers();
+  if(!activeVariable) return;
 
-if(!activeVariable)return;
+  const values = data.map(d => d[activeVariable]).filter(v => typeof v === "number");
+  minValue = Math.min(...values);
+  maxValue = Math.max(...values);
 
-const values=data.map(d=>d[activeVariable]);
+  data.forEach(d => {
 
-const minV=Math.min(...values);
-const maxV=Math.max(...values);
+    const v = d[activeVariable];
+    if(typeof v !== "number") return;
 
-data.forEach(d=>{
+    const t = (v - minValue) / (maxValue - minValue || 1);
+    const color = getColor(t);
 
-const t=(d[activeVariable]-minV)/(maxV-minV||1);
+    let popup = "";
+    Object.keys(d).forEach(k => {
+      popup += `<b>${k}</b>: ${d[k]}<br>`;
+    });
 
-const color=getColor(t);
+    const marker = L.circleMarker(
+      [d[latField], d[lonField]],
+      {
+        radius: 6,
+        color,
+        fillColor: color,
+        fillOpacity: 0.9
+      }
+    ).bindPopup(popup);
 
-let popup="";
-
-Object.keys(d).forEach(k=>{
-popup+=`<b>${k}</b>: ${d[k]}<br>`;
-});
-
-const marker=L.circleMarker(
-[d[latField],d[lonField]],
-{
-radius:6,
-color,
-fillColor:color,
-fillOpacity:0.9
-}
-).bindPopup(popup);
-
-markersLayer.addLayer(marker);
-
-});
+    markersLayer.addLayer(marker);
+  });
 
 }
 
 
+/* ---------- Legend ---------- */
+function updateLegend(){
+  document.getElementById("legendTitle").innerText = activeVariable || "Variable";
+  document.getElementById("legendMin").innerText = isFinite(minValue) ? minValue.toFixed(2) : "0";
+  document.getElementById("legendMax").innerText = isFinite(maxValue) ? maxValue.toFixed(2) : "1";
+}
 
+
+/* ---------- Graph ---------- */
 function drawGraph(){
 
-if(!activeVariable)return;
+  if(!activeVariable) return;
 
-const labels=data.map(d=>d[timeField] ?? "");
+  const labels = data.map((d, i) => {
+    if(timeField && d[timeField] != null) return d[timeField];
+    return i;
+  });
 
-const values=data.map(d=>d[activeVariable]);
+  const values = data.map(d => d[activeVariable]);
 
-const ctx=document.getElementById("chart");
+  const ctx = document.getElementById("chart");
 
-if(chart)chart.destroy();
+  if(chart) chart.destroy();
 
-chart=new Chart(ctx,{
-type:"line",
-
-data:{
-labels:labels,
-datasets:[{
-label:activeVariable,
-data:values,
-borderWidth:3,
-pointRadius:0,
-tension:0.2
-}]
-},
-
-options:{
-responsive:true,
-maintainAspectRatio:false,
-
-plugins:{
-legend:{display:true}
-},
-
-scales:{
-x:{
-title:{display:true,text:timeField ?? "index"}
-},
-y:{
-title:{display:true,text:activeVariable}
-}
-}
-
-}
-
-});
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: activeVariable,
+        data: values,
+        borderWidth: 3,
+        pointRadius: 0,
+        tension: 0.2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        x: { title: { display: true, text: timeField || "index" } },
+        y: { title: { display: true, text: activeVariable } }
+      }
+    }
+  });
 
 }
 
 
-
+/* ---------- Colour ---------- */
 function getColor(t){
-
-const hue=240-240*t;
-
-return `hsl(${hue},100%,45%)`;
-
+  const hue = 240 - 240 * t;
+  return `hsl(${hue},100%,45%)`;
 }
 
 </script>
